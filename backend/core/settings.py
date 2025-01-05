@@ -174,6 +174,10 @@ SESSION_COOKIE_SECURE = False  # 개발 환경에서는 False, 프로덕션에�
 
 STATIC_URL = "static/"
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import styles from "./page.module.css";
+import LoginButton from "@/components/loginButton";
 
 export default function Home() {
   return (
@@ -14,21 +15,7 @@ export default function Home() {
         </ol>
 
         <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="http://localhost:8000/api/accountapp/auth/login/?next=http://localhost:3000/llm"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Google Login
-          </a>
+          <LoginButton />
           <a
             href="https://github.com/Aiden-Kwak"
             target="_blank"

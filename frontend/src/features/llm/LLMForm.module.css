@@ -1,0 +1,80 @@
+.container {
+    @apply flex min-h-screen bg-black text-white;
+}
+  
+.sidebar {
+    @apply bg-gray-900 p-4;
+    width: 300px;
+}
+  
+.sidebarTitle {
+    @apply text-lg font-bold mb-4;
+}
+  
+.sidebarList {
+    @apply list-none p-0;
+}
+  
+.sidebarListItem {
+    @apply mb-2;
+}
+  
+.main {
+    @apply flex-1 flex flex-col items-center justify-center p-8;
+}
+  
+.header {
+    @apply text-2xl font-bold mb-6;
+}
+  
+.inputContainer {
+    @apply w-full max-w-xl bg-gray-800 p-4 rounded-lg shadow-md flex items-center;
+}
+  
+.input {
+    @apply flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500;
+}
+  
+.microphoneButton {
+    @apply text-white ml-2 text-xl cursor-pointer;
+}
+  
+.buttonGroup {
+    @apply flex justify-between mt-4 space-x-4;
+}
+  
+.button {
+    @apply bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition-colors duration-300;
+}
+
+.pdfUploadContainer {
+    @apply flex flex-col items-center justify-center bg-gray-800 p-6 rounded-lg shadow-md;
+}
+  
+.pdfInput {
+    @apply text-white bg-transparent border border-gray-600 p-2 rounded w-full max-w-md;
+}
+  
+.pdfUploadText {
+    @apply text-gray-400 text-sm mt-2;
+}
+
+.statusText {
+    @apply mt-4 text-sm text-green-500; /* 업로드 상태 텍스트 */
+}
+
+.loader {
+    @apply text-gray-400 text-sm mt-4; /* 로딩 스피너 텍스트 */
+}
+
+.progressBarContainer {
+    @apply w-full max-w-md bg-gray-700 rounded-full overflow-hidden h-4 mt-4 shadow-md;
+}
+
+.progressBar {
+    @apply h-full bg-green-500 transition-all duration-500; /* 진행률 바 */
+}
+
+.progressText {
+    @apply mt-2 text-sm text-gray-400 text-center; /* 진행률 퍼센트 텍스트 */
+}

@@ -26,12 +26,13 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
-      console.error("API Request Error:", {
-        message: error.message,
-        config: error.config,
-        response: error.response,
-      });
-      return Promise.reject(error);
+        console.error("API Request Error:", {
+            message: error.message,
+            config: error.config,
+            response: error.response ? error.response.data : null, // 안전한 접근
+            status: error.response ? error.response.status : "No Response", // 상태 코드 확인
+        });
+        return Promise.reject(error);
     }
 );
   
