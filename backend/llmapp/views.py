@@ -96,7 +96,7 @@ class EvidenceRetrievalAPIView(APIView):
             Answer the question using the context.
             """
             response = create_openai_completion(prompt)
-
+            print("Response from OpenAI: ", response)
             return Response({
                 "question": question,
                 "answer": response["choices"][0]["text"].strip(),
@@ -134,7 +134,6 @@ class ChatResponseAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        # 클라이언트로부터 데이터 수신
         session_id = request.data.get("session_id")
         message = request.data.get("message")
 
@@ -144,25 +143,31 @@ class ChatResponseAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 세션 유효성 검증
         chat_session = get_object_or_404(ChatSession, id=session_id, user=request.user)
         pdf = chat_session.pdf
+
         try:
-            # PDF와 연관된 인덱스 및 메타데이터 로드
+            # FAISS 인덱스 및 메타데이터 로드
             index_file = f"faiss_indices/{pdf.id}_index.bin"
             metadata_file = f"faiss_indices/{pdf.id}_metadata.json"
             index, metadata = load_faiss_index(index_file, metadata_file)
 
-            # 질문 메시지로 임베딩 생성
+            # 질문 임베딩 생성
             query_embedding = create_embedding(message).reshape(1, -1)
-            # 가장 관련성 높은 페이지 검색
             print(f"Query embedding shape: {query_embedding.shape}, dtype: {query_embedding.dtype}")
             print(f"Index dimensions: {index.d}")
             print(f"FAISS index total vectors: {index.ntotal}")
-            distances, indices = index.search(query_embedding, top_k=5) ## 여기가 문제지점. 췤
-            print("checkpoint: 2")
+
+            top_k = min(5, index.ntotal)
+            distances, indices = index.search(query_embedding, top_k)
+
+            if not indices[0].size:
+                return Response({"error": "No relevant evidence found in the PDF."}, status=status.HTTP_404_NOT_FOUND)
+
+            # 근거추출
             evidence = [metadata[i] for i in indices[0]]
-            # 문맥 생성
+
+            # 문맥생성
             context = "\n".join([f"Page {item['page_number']}: {item['text']}" for item in evidence])
             prompt = f"""
             Question: {message}
@@ -170,28 +175,26 @@ class ChatResponseAPIView(APIView):
             {context}
             Answer the question using the context.
             """
-            print("Prompt: ", prompt)
+            print("체크포인트")
 
-            # OpenAI API를 통해 응답 생성
             response = create_openai_completion(prompt)
+            print("response:", response)
 
-            # 메시지 저장 (DB)
             ChatMessage.objects.create(
                 session=chat_session,
                 sender="user",
                 message=message
             )
+            
             ChatMessage.objects.create(
                 session=chat_session,
                 sender="system",
-                message=response["choices"][0]["text"].strip()
+                message=response
             )
-
             return Response({
-                "response": response["choices"][0]["text"].strip(),
+                "response": response,
                 "evidence": evidence
             }, status=status.HTTP_200_OK)
-
         except Exception as e:
             return Response({"error": f"Failed to process chat: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

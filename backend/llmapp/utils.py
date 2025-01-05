@@ -6,11 +6,13 @@ from markitdown import MarkItDown
 from openai import OpenAI, AuthenticationError, APIConnectionError, RateLimitError, OpenAIError
 from dotenv import load_dotenv
 import openai
+import requests
 
 load_dotenv()
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
-
+deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 def pdf_to_markdown_with_markitdown(pdf_path):
     try:
@@ -83,7 +85,7 @@ def load_faiss_index(index_file, metadata_file):
     except Exception as e:
         raise RuntimeError(f"Failed to load FAISS index: {str(e)}")
 
-
+"""
 def create_openai_completion(prompt, model="text-davinci-003"):
     print("생성단계 진입")
     # 딥시크로 수정해놔
@@ -98,3 +100,38 @@ def create_openai_completion(prompt, model="text-davinci-003"):
         return response
     except Exception as e:
         raise RuntimeError(f"OpenAI Completion failed: {str(e)}")
+"""
+
+def create_openai_completion(prompt, model="deepseek-chat"):
+    print("DeepSeek API 요청 생성 중...")
+    headers = {
+        "Authorization": f"Bearer {deepseek_api_key}",
+        "Content-Type": "application/json"
+    }
+
+    try:
+        #print("DeepSeek API 호출 중...")
+        response = requests.post(
+            url=f"{deepseek_base_url}/chat/completions",
+            headers=headers,
+            json={
+                "model": model,
+                "messages": [{"role": "system", "content": prompt}],
+                "max_tokens": 500,
+                "temperature": 0.7
+            }
+        )
+        #print("DeepSeek API 호출 완료")
+        response.raise_for_status()
+        data = response.json()
+        #print("DeepSeek API 응답 데이터: ", data)
+
+        # 응답 데이터 검증
+        if "choices" not in data or not data["choices"]:
+            raise ValueError("DeepSeek API에서 올바르지 않은 응답 형식이 반환되었습니다.")
+        #print(data["choices"][0]["message"]["content"])
+        return data["choices"][0]["message"]["content"]
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"DeepSeek API 호출 실패: {e}")
+    except ValueError as e:
+        raise RuntimeError(f"DeepSeek 응답 처리 실패: {e}")
