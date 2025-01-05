@@ -5,6 +5,7 @@ import faiss
 from markitdown import MarkItDown
 from openai import OpenAI, AuthenticationError, APIConnectionError, RateLimitError, OpenAIError
 from dotenv import load_dotenv
+import openai
 
 load_dotenv()
 
@@ -29,15 +30,24 @@ def create_embedding(text):
 
         client = OpenAI(api_key=openai_api_key)
         response = client.embeddings.create(model="text-embedding-3-small", input=text)
+        #print("response: ", response)
 
         embedding_data = response.data
-        if not embedding_data or "embedding" not in embedding_data[0]:
-            raise RuntimeError(f"Invalid or incomplete API response: {response}")
+        if not isinstance(embedding_data, list) or not embedding_data:
+            raise RuntimeError(f"Invalid API response: response.data is not a non-empty list. Actual data: {embedding_data}")
 
-        embedding = np.array(embedding_data[0]["embedding"], dtype=np.float32)
+        first_item = embedding_data[0]
+        if not isinstance(first_item, openai.types.embedding.Embedding):
+            raise RuntimeError(f"Unexpected type for response.data[0]: {type(first_item)}. Expected openai.types.embedding.Embedding.")
+        if not hasattr(first_item, "embedding"):
+            raise RuntimeError(f"'embedding' attribute is missing in response.data[0]: {first_item}")
+
+        # 임베딩 추출
+        embedding = np.array(first_item.embedding, dtype=np.float32)
         return embedding
     except Exception as e:
-        raise RuntimeError(f"Failed to create embedding: {str(e)}")
+        print(f"Error during embedding creation: {e}")
+        raise RuntimeError(f"Failed to create embedding: {e}")
 
 
 def save_faiss_index(embeddings, metadata, index_file, metadata_file):
@@ -75,6 +85,7 @@ def load_faiss_index(index_file, metadata_file):
 
 
 def create_openai_completion(prompt, model="text-davinci-003"):
+    print("생성단계 진입")
     # 딥시크로 수정해놔
     try:
         client = OpenAI(api_key=openai_api_key)

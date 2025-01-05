@@ -5,6 +5,7 @@ from .views import (
     PDFProgressAPIView,
     ChatResponseAPIView,
     EvidenceRetrievalAPIView,
+    StartChatAPIView,
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path("progress/<int:pdf_id>/", PDFProgressAPIView.as_view(), name="api_progress"),
     path("chat/", ChatResponseAPIView.as_view(), name="api_chat"),
     path("retrieve/", EvidenceRetrievalAPIView.as_view(), name="api_evidence_retrieval"),
+    path("start_chat/", StartChatAPIView.as_view(), name="start_chat"),
 ]

@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .models import UploadedPDF, PDFEmbedding
+from .models import UploadedPDF, PDFEmbedding, ChatSession, ChatMessage
 from .utils import (
     pdf_to_markdown_with_markitdown,
     create_embedding,
@@ -50,14 +50,12 @@ class PDFUploadAPIView(APIView):
                     embedding = create_embedding(text)
                     embeddings.append(embedding)
                     metadata.append({"page_number": page_number, "text": text})
-
             if not embeddings:
                 raise RuntimeError("No embeddings were generated.")
 
             index_file = f"faiss_indices/{uploaded_pdf.id}_index.bin"
             metadata_file = f"faiss_indices/{uploaded_pdf.id}_metadata.json"
             save_faiss_index(embeddings, metadata, index_file, metadata_file)
-
             uploaded_pdf.processed = True
             uploaded_pdf.embedding_created = True
             uploaded_pdf.processing_progress = 100
@@ -136,42 +134,79 @@ class ChatResponseAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        context = request.data.get("context")
-        claim_text = request.data.get("claim_text")
-        evidence_list = request.data.get("evidence")
+        # 클라이언트로부터 데이터 수신
+        session_id = request.data.get("session_id")
+        message = request.data.get("message")
 
-        if not claim_text or not evidence_list:
-            return Response({"error": "Claim text and evidence are required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        headers = {
-            "Authorization": f"Bearer {deepseek_api_key}",
-            "Content-Type": "application/json"
-        }
-
-        prompt = f"""
-        Claim: {claim_text}
-        Context: {context}
-        Evidence:
-        {json.dumps(evidence_list, indent=2)}
-        """
-
-        try:
-            response = requests.post(
-                url=f"{deepseek_base_url}/chat/completions",
-                headers=headers,
-                json={
-                    "model": "deepseek-chat",
-                    "messages": [{"role": "system", "content": prompt}]
-                }
+        if not session_id or not message:
+            return Response(
+                {"error": "Session ID and message are required."},
+                status=status.HTTP_400_BAD_REQUEST
             )
-            response.raise_for_status()
-            data = response.json()
 
-            if "choices" not in data or not data["choices"]:
-                return Response({"error": "Invalid response from DeepSeek API"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # 세션 유효성 검증
+        chat_session = get_object_or_404(ChatSession, id=session_id, user=request.user)
+        pdf = chat_session.pdf
+        try:
+            # PDF와 연관된 인덱스 및 메타데이터 로드
+            index_file = f"faiss_indices/{pdf.id}_index.bin"
+            metadata_file = f"faiss_indices/{pdf.id}_metadata.json"
+            index, metadata = load_faiss_index(index_file, metadata_file)
+
+            # 질문 메시지로 임베딩 생성
+            query_embedding = create_embedding(message).reshape(1, -1)
+            # 가장 관련성 높은 페이지 검색
+            print(f"Query embedding shape: {query_embedding.shape}, dtype: {query_embedding.dtype}")
+            print(f"Index dimensions: {index.d}")
+            print(f"FAISS index total vectors: {index.ntotal}")
+            distances, indices = index.search(query_embedding, top_k=5) ## 여기가 문제지점. 췤
+            print("checkpoint: 2")
+            evidence = [metadata[i] for i in indices[0]]
+            # 문맥 생성
+            context = "\n".join([f"Page {item['page_number']}: {item['text']}" for item in evidence])
+            prompt = f"""
+            Question: {message}
+            Context:
+            {context}
+            Answer the question using the context.
+            """
+            print("Prompt: ", prompt)
+
+            # OpenAI API를 통해 응답 생성
+            response = create_openai_completion(prompt)
+
+            # 메시지 저장 (DB)
+            ChatMessage.objects.create(
+                session=chat_session,
+                sender="user",
+                message=message
+            )
+            ChatMessage.objects.create(
+                session=chat_session,
+                sender="system",
+                message=response["choices"][0]["text"].strip()
+            )
 
             return Response({
-                "response": data["choices"][0]["message"]["content"]
+                "response": response["choices"][0]["text"].strip(),
+                "evidence": evidence
             }, status=status.HTTP_200_OK)
-        except requests.exceptions.RequestException as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        except Exception as e:
+            return Response({"error": f"Failed to process chat: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class StartChatAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        pdf_id = request.data.get("pdf_id")
+        if not pdf_id:
+            return Response({"error": "PDF ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        pdf = UploadedPDF.objects.filter(id=pdf_id, user=request.user).first()
+        if not pdf or not pdf.processed or not pdf.embedding_created:
+            return Response({"error": "PDF is not ready for chat."}, status=status.HTTP_400_BAD_REQUEST)
+
+        chat_session = ChatSession.objects.create(user=request.user, pdf=pdf)
+        return Response({"chat_session_id": chat_session.id}, status=status.HTTP_200_OK)
