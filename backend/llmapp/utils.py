@@ -7,6 +7,9 @@ from openai import OpenAI, AuthenticationError, APIConnectionError, RateLimitErr
 from dotenv import load_dotenv
 import openai
 import requests
+import re
+
+from PyPDF2 import PdfReader # markitdown 버려. 페이지 인식 이슈
 
 load_dotenv()
 
@@ -16,19 +19,68 @@ deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 def pdf_to_markdown_with_markitdown(pdf_path):
     try:
-        md = MarkItDown()  # MarkItDown 객체 생성
-        result = md.convert(pdf_path)  # PDF 변환
-        return result.text_content  # 변환된 마크다운 텍스트 반환
+        md = MarkItDown()
+        result = md.convert(pdf_path)
+        return result.text_content
     except Exception as e:
         raise RuntimeError(f"Failed to convert PDF to Markdown: {str(e)}")
+
+def extract_text_with_page_numbers(pdf_path):
+    reader = PdfReader(pdf_path)
+    nodes = []
+    for i, page in enumerate(reader.pages):
+        text = page.extract_text()
+        nodes.append({
+            "page_number": i + 1,  # Page numbers start from 1
+            "text": text.strip()
+        })
+    return nodes
+
+import re
+
+def createPDFChunk(pdf_path, CHUNK_SIZE, CHUNK_OVERLAP):
+    pdf_nodes = extract_text_with_page_numbers(pdf_path)
+    nodes = []
+
+    for node in pdf_nodes:
+        text = node["text"]
+        page_number = node["page_number"]
+
+        sentences = re.split(r'(?<=[.?!])\s+', text)
+        current_chunk = []
+        current_tokens = 0
+
+        for sentence in sentences:
+            sentence_tokens = len(sentence.split())  # 단어 개수로 토큰 수 추정
+            if current_tokens + sentence_tokens > CHUNK_SIZE:
+                nodes.append({
+                    "page_label": page_number,
+                    "text": " ".join(current_chunk)
+                })
+                # 겹치는 부분 추가
+                current_chunk = current_chunk[-CHUNK_OVERLAP:] if CHUNK_OVERLAP > 0 else []
+                current_tokens = sum(len(s.split()) for s in current_chunk)
+
+            current_chunk.append(sentence)
+            current_tokens += sentence_tokens
+
+        # 마지막 청크 추가
+        if current_chunk:
+            nodes.append({
+                "page_label": page_number,
+                "text": " ".join(current_chunk)
+            })
+
+    return nodes
+
 
 
 def create_embedding(text):
     try:
         if not isinstance(text, str):
             raise ValueError(f"Input text must be a string. Got: {type(text)}")
-        if len(text) > 10000:  # OpenAI 텍스트 길이 제한 확인
-            raise ValueError("Input text exceeds the 10,000 character limit.")
+        #if len(text) > 10000:  # OpenAI 텍스트 길이 제한 확인
+        #    raise ValueError("Input text exceeds the 10,000 character limit.")
 
         client = OpenAI(api_key=openai_api_key)
         response = client.embeddings.create(model="text-embedding-3-small", input=text)

@@ -2,7 +2,7 @@ import os
 import json
 import numpy as np
 import requests
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -14,7 +14,9 @@ from .utils import (
     save_faiss_index,
     load_faiss_index,
     create_openai_completion,
-    build_prompt_for_pdf
+    build_prompt_for_pdf,
+    extract_text_with_page_numbers,
+    createPDFChunk
 )
 from dotenv import load_dotenv
 
@@ -27,6 +29,8 @@ class PDFUploadAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
+        CHUNK_SIZE=100
+        CHUNK_OVERLAP=10
         file = request.FILES.get("file")
         if not file:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
@@ -35,22 +39,31 @@ class PDFUploadAPIView(APIView):
             uploaded_pdf = UploadedPDF.objects.create(user=request.user, file=file)
 
             pdf_path = uploaded_pdf.file.path
-            markdown_text = pdf_to_markdown_with_markitdown(pdf_path)
-            if not markdown_text.strip():
-                raise RuntimeError("No valid content found in the PDF.")
+            nodes = createPDFChunk(pdf_path, CHUNK_SIZE, CHUNK_OVERLAP)
+            print("="*50)
+            print("nodes: ", nodes)
+            print("="*50)
         except Exception as e:
             return Response({"error": f"Failed to process PDF: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         try:
             embeddings = []
             metadata = []
-            pages = markdown_text.split("\n### Page")
-            for page_number, page_content in enumerate(pages, start=1):
-                text = page_content.strip()
-                if text:
-                    embedding = create_embedding(text)
-                    embeddings.append(embedding)
-                    metadata.append({"page_number": page_number, "text": text})
+
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = {executor.submit(create_embedding, node["text"]): node for node in nodes}
+                for future in as_completed(futures):
+                    node = futures[future]
+                    try:
+                        embedding = future.result()
+                        embeddings.append(embedding)
+                        metadata.append({
+                            "page_number": node["page_label"],
+                            "text": node["text"]
+                        })
+                    except Exception as e:
+                        print(f"Error processing node: {e}")
+
             if not embeddings:
                 raise RuntimeError("No embeddings were generated.")
 
@@ -82,7 +95,6 @@ class EvidenceRetrievalAPIView(APIView):
             index_file = f"faiss_indices/{pdf_id}_index.bin"
             metadata_file = f"faiss_indices/{pdf_id}_metadata.json"
             index, metadata = load_faiss_index(index_file, metadata_file)
-            print("FUCK")
             query_embedding = create_embedding(question).reshape(1, -1)
 
             distances, indices = index.search(query_embedding, top_k=top_k)
@@ -154,9 +166,9 @@ class ChatResponseAPIView(APIView):
 
             # 질문 임베딩 생성
             query_embedding = create_embedding(message).reshape(1, -1)
-            print(f"Query embedding shape: {query_embedding.shape}, dtype: {query_embedding.dtype}")
-            print(f"Index dimensions: {index.d}")
-            print(f"FAISS index total vectors: {index.ntotal}")
+            #print(f"Query embedding shape: {query_embedding.shape}, dtype: {query_embedding.dtype}")
+            #print(f"Index dimensions: {index.d}")
+            #print(f"FAISS index total vectors: {index.ntotal}")
 
             top_k = min(5, index.ntotal)
             distances, indices = index.search(query_embedding, top_k)
@@ -165,13 +177,22 @@ class ChatResponseAPIView(APIView):
                 return Response({"error": "No relevant evidence found in the PDF."}, status=status.HTTP_404_NOT_FOUND)
 
             # 근거추출
-            evidence = [metadata[i] for i in indices[0]]
+            #evidence = [metadata[i] for i in indices[0]]
+            evidence = []
+            for idx in indices[0]:
+                if idx < len(metadata):
+                    evidence.append(metadata[idx])
+                else:
+                    print(f"Warning: Index {idx} out of bounds for metadata.")
+            if not evidence:
+                evidence.append("No evidence found in this PDF file.")
+
             print('='*50)
             print("Evidence: ", evidence)
             print('='*50)
             context = "\n".join([f"Page {item['page_number']}: {item['text']}" for item in evidence])
             prompt = build_prompt_for_pdf(context, message, evidence)
-            print("체크포인트")
+            #print("체크포인트")
 
             response = create_openai_completion(prompt)
             print("response:", response)
