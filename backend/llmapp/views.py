@@ -14,6 +14,7 @@ from .utils import (
     save_faiss_index,
     load_faiss_index,
     create_openai_completion,
+    build_prompt_for_pdf
 )
 from dotenv import load_dotenv
 
@@ -81,7 +82,7 @@ class EvidenceRetrievalAPIView(APIView):
             index_file = f"faiss_indices/{pdf_id}_index.bin"
             metadata_file = f"faiss_indices/{pdf_id}_metadata.json"
             index, metadata = load_faiss_index(index_file, metadata_file)
-
+            print("FUCK")
             query_embedding = create_embedding(question).reshape(1, -1)
 
             distances, indices = index.search(query_embedding, top_k=top_k)
@@ -89,17 +90,16 @@ class EvidenceRetrievalAPIView(APIView):
             evidence = [metadata[i] for i in indices[0]]
 
             context = "\n".join([f"Page {item['page_number']}: {item['text']}" for item in evidence])
-            prompt = f"""
-            Question: {question}
-            Context:
-            {context}
-            Answer the question using the context.
-            """
+            print('-'*50)
+            prompt = build_prompt_for_pdf(context, question, evidence)
+            print("Prompt: ", prompt)
+
+
             response = create_openai_completion(prompt)
             print("Response from OpenAI: ", response)
             return Response({
                 "question": question,
-                "answer": response["choices"][0]["text"].strip(),
+                "answer": response,
                 "evidence": evidence
             }, status=status.HTTP_200_OK)
         except Exception as e:

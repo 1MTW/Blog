@@ -85,22 +85,6 @@ def load_faiss_index(index_file, metadata_file):
     except Exception as e:
         raise RuntimeError(f"Failed to load FAISS index: {str(e)}")
 
-"""
-def create_openai_completion(prompt, model="text-davinci-003"):
-    print("생성단계 진입")
-    # 딥시크로 수정해놔
-    try:
-        client = OpenAI(api_key=openai_api_key)
-        response = client.completions.create(
-            model=model,
-            prompt=prompt,
-            max_tokens=500,
-            temperature=0.7
-        )
-        return response
-    except Exception as e:
-        raise RuntimeError(f"OpenAI Completion failed: {str(e)}")
-"""
 
 def create_openai_completion(prompt, model="deepseek-chat"):
     print("DeepSeek API 요청 생성 중...")
@@ -135,3 +119,39 @@ def create_openai_completion(prompt, model="deepseek-chat"):
         raise RuntimeError(f"DeepSeek API 호출 실패: {e}")
     except ValueError as e:
         raise RuntimeError(f"DeepSeek 응답 처리 실패: {e}")
+    
+
+def build_prompt_for_pdf(context, question, evidence_list):
+    evidence_strings = []
+    for evidence in evidence_list:
+        evidence_strings.append(
+            f"- Page: {evidence['page_number']} | Evidence: \"{evidence['text']}\""
+        )
+    evidence_section = "\n".join(evidence_strings)
+
+    prompt = f"""
+    You are an expert AI system tasked with generating accurate and evidence-based answers strictly from the provided PDF document. The answers must be written in Korean. Always reference the evidence from the PDF, including page numbers, and do not include any information outside the provided context.
+
+    ### Question
+    "{question}"
+
+    ### Context
+    "{context}"
+
+    ### Evidence extracted from the PDF
+    {evidence_section}
+
+    ### Instructions
+    1. Answer the question based only on the information provided in the PDF document.
+    2. Clearly cite the evidence used for your answer, including the page number and relevant text.
+    3. If the question cannot be answered with the provided information, state: "PDF 문서에서는 해당 정보가 제공되지 않습니다."
+    4. Write the answer in Korean.
+
+    ### Response Format
+    - **답변:** Provide an accurate answer in Korean based on the evidence.
+    - **근거:** Include the evidence from the PDF (page numbers and text).
+    - **결론:** Summarize the answer concisely in Korean.
+    """
+    print("Prompt2: ", prompt)
+    return prompt
+
