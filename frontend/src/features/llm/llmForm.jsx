@@ -25,7 +25,7 @@ function LLMForm() {
 
     try {
       setIsLoading(true);
-      setUploadStatus(""); // 상태 초기화
+      setUploadStatus("");
 
       const response = await apiClient.post("/api/llmapp/upload/", formData, {
         headers: {
@@ -65,7 +65,7 @@ function LLMForm() {
         console.error("진행률 확인 실패:", error);
         clearInterval(interval);
       }
-    }, 1000); // 1초 간격으로 진행률 확인
+    }, 1000);
   };
 
   const startChatSession = async (pdfId) => {
@@ -96,14 +96,13 @@ function LLMForm() {
               accept=".pdf"
               onChange={handlePdfUpload}
               className={styles.pdfInput}
-              disabled={isLoading} // 로딩 중에는 비활성화
+              disabled={isLoading}
             />
             <p className={styles.pdfUploadText}>PDF 파일을 선택해주세요.</p>
             {uploadStatus && <p className={styles.statusText}>{uploadStatus}</p>}
           </div>
         )}
 
-        {/* 진행률 바 */}
         {isPdfUploaded && progress < 100 && (
           <div className={styles.progressBarContainer}>
             <div
