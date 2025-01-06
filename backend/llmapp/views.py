@@ -166,15 +166,11 @@ class ChatResponseAPIView(APIView):
 
             # 근거추출
             evidence = [metadata[i] for i in indices[0]]
-
-            # 문맥생성
+            print('='*50)
+            print("Evidence: ", evidence)
+            print('='*50)
             context = "\n".join([f"Page {item['page_number']}: {item['text']}" for item in evidence])
-            prompt = f"""
-            Question: {message}
-            Context:
-            {context}
-            Answer the question using the context.
-            """
+            prompt = build_prompt_for_pdf(context, message, evidence)
             print("체크포인트")
 
             response = create_openai_completion(prompt)
