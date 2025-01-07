@@ -1,1 +1,4 @@
 .env
+media/*
+faiss_indices
+__pycache__
