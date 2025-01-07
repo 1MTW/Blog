@@ -1,10 +1,27 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import apiClient from "@/utils/axios";
 import styles from "./ChatUI.module.css";
+import ReactMarkdown from "react-markdown";
 
 function ChatUI({ sessionId }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+
+  // 세션 초기화 시 대화 기록 불러오기
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const response = await apiClient.get(`/api/llmapp/chat/${sessionId}/history/`);
+        if (response.status === 200) {
+          setMessages(response.data.history);
+        }
+      } catch (error) {
+        console.error("대화 기록 불러오기 실패:", error);
+      }
+    };
+
+    fetchHistory();
+  }, [sessionId]);
 
   const sendMessage = async () => {
     try {
@@ -25,19 +42,18 @@ function ChatUI({ sessionId }) {
 
   return (
     <div className={styles.chatContainer}>
-      {/* 메시지 목록 */}
       <div className={styles.messageList}>
         {messages.map((msg, index) => (
           <div key={index} className={styles.message}>
             <span className={styles.messageUser}>
               {msg.sender === "user" ? "You" : "System"}
             </span>
-            <p className={styles.messageText}>{msg.message}</p>
+            <ReactMarkdown className={styles.messageText}>
+              {msg.message}
+            </ReactMarkdown>
           </div>
         ))}
       </div>
-
-      {/* 채팅 입력 필드 */}
       <div className={styles.chatInputContainer}>
         <input
           type="text"

@@ -28,7 +28,8 @@ class ChatSession(models.Model):
     pdf = models.ForeignKey(UploadedPDF, on_delete=models.CASCADE, related_name="chat_sessions")
     started_at = models.DateTimeField(auto_now_add=True)
     last_interaction = models.DateTimeField(auto_now=True)
-
+    history = models.JSONField(default=list)
+    
     def __str__(self):
         return f"Chat Session {self.id} for {self.user.username}"
 

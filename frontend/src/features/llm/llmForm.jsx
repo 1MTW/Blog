@@ -12,6 +12,32 @@ function LLMForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [pdfId, setPdfId] = useState(null); // 업로드된 PDF ID
   const [chatSessionId, setChatSessionId] = useState(null); // 채팅 세션 ID
+  const [pdfList, setPdfList] = useState([]); // 이전 PDF 목록
+  const [selectedPdfId, setSelectedPdfId] = useState(null); // 선택된 PDF
+  const [chatHistory, setChatHistory] = useState([]); // 선택된 PDF의 대화 내역
+
+  useEffect(() => {
+    fetchUploadedPDFs();
+  }, []);
+
+  const fetchUploadedPDFs = async () => {
+    try {
+      const response = await apiClient.get("/api/llmapp/uploaded_pdfs/");
+      setPdfList(response.data);
+    } catch (error) {
+      console.error("PDF 목록 불러오기 실패:", error);
+    }
+  };
+
+  const fetchChatHistory = async (pdfId) => {
+    try {
+      const response = await apiClient.get(`/api/llmapp/chat/history/${pdfId}/`);
+      setChatHistory(response.data);
+      setSelectedPdfId(pdfId);
+    } catch (error) {
+      console.error("대화 내역 불러오기 실패:", error);
+    }
+  };
 
   const handlePdfUpload = async (event) => {
     const file = event.target.files[0];
@@ -38,6 +64,7 @@ function LLMForm() {
         setUploadStatus("PDF 업로드 중...");
         setPdfId(response.data.pdf_id);
         pollProgress(response.data.pdf_id);
+        fetchUploadedPDFs(); // 업로드 후 목록 갱신
       }
     } catch (error) {
       console.error("PDF 업로드 실패:", error);
@@ -89,6 +116,23 @@ function LLMForm() {
           {isPdfUploaded ? "무엇을 도와드릴까요?" : "PDF를 업로드하세요"}
         </h1>
 
+        {/* 좌측: 이전 PDF 목록 */}
+        <div className={styles.pdfListContainer}>
+          <h2>이전 업로드된 PDF 목록</h2>
+          <ul className={styles.pdfList}>
+            {pdfList.map((pdf) => (
+              <li
+                key={pdf.id}
+                onClick={() => fetchChatHistory(pdf.id)}
+                className={selectedPdfId === pdf.id ? styles.selectedPdf : ""}
+              >
+                {decodeURI(pdf.file.split("/").pop())}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* 우측: PDF 업로드 또는 채팅 */}
         {!isPdfUploaded && (
           <div className={styles.pdfUploadContainer}>
             <input
@@ -117,6 +161,24 @@ function LLMForm() {
           <div className={styles.chatContainer}>
             <p className={styles.statusText}>채팅 세션이 시작되었습니다!</p>
             <ChatUI sessionId={chatSessionId} />
+          </div>
+        )}
+
+        {selectedPdfId && (
+          <div className={styles.chatHistory}>
+            <h3>이전 대화 내역</h3>
+            {chatHistory.map((session, index) => (
+              <div key={index}>
+                <h4>세션 ID: {session.session_id}</h4>
+                <ul>
+                  {session.messages.map((msg, idx) => (
+                    <li key={idx}>
+                      <strong>{msg.sender}:</strong> {msg.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         )}
       </main>

@@ -78,3 +78,7 @@
 .progressText {
     @apply mt-2 text-sm text-gray-400 text-center; /* 진행률 퍼센트 텍스트 */
 }
+
+.selectedPdf {
+    border-bottom: 1px solid #ffffff;
+}

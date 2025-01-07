@@ -177,12 +177,14 @@ def build_prompt_for_pdf(context, question, evidence_list):
     evidence_strings = []
     for evidence in evidence_list:
         evidence_strings.append(
-            f"- Page: {evidence['page_number']} | Evidence: \"{evidence['text']}\""
+            f"- **Page:** {evidence['page_number']}  \n  **Evidence:** \"{evidence['text']}\""
         )
     evidence_section = "\n".join(evidence_strings)
 
     prompt = f"""
-    You are an expert AI system tasked with generating accurate and evidence-based answers strictly from the provided PDF document. The answers must be written in Korean. Always reference the evidence from the PDF, including page numbers, and do not include any information outside the provided context.
+    You are an expert AI system tasked with generating accurate and evidence-based answers strictly from the provided PDF document. 
+    The answers must be written in Korean using Markdown formatting. 
+    Always reference the evidence from the PDF, including page numbers, and do not include any information outside the provided context.
 
     ### Question
     "{question}"
@@ -195,14 +197,28 @@ def build_prompt_for_pdf(context, question, evidence_list):
 
     ### Instructions
     1. Answer the question based only on the information provided in the PDF document.
-    2. Clearly cite the evidence used for your answer, including the page number and relevant text.
-    3. If the question cannot be answered with the provided information, state: "PDF 문서에서는 해당 정보가 제공되지 않습니다."
-    4. Write the answer in Korean.
+    2. Format your answer using **Markdown**, including:
+       - **Headings** for sections (e.g., `### 답변`, `### 근거`, `### 결론`).
+       - **Bold text** for emphasis.
+       - **Bullet points** or numbered lists for clear organization.
+       - **Code blocks** or inline code where applicable.
+       - **Links** if referencing online resources (if any URLs are provided in the context).
+    3. Clearly cite the evidence used for your answer, including the page number and relevant text.
+    4. If the question cannot be answered with the provided information, state: "`PDF 문서에서는 해당 정보가 제공되지 않습니다.`"
+    5. Write the entire answer in **Korean**.
 
-    ### Response Format
-    - **답변:** Provide an accurate answer in Korean based on the evidence.
-    - **근거:** Include the evidence from the PDF (page numbers and text).
-    - **결론:** Summarize the answer concisely in Korean.
+    ### Response Format (Use Markdown)
+    ```markdown
+    ### 답변
+    [Your detailed answer here]
+
+    ### 근거
+    - **Page:** [Page number]  \n  **Text:** "[Relevant text here]"
+    - **Page:** [Page number]  \n  **Text:** "[Relevant text here]"
+
+    ### 결론
+    [Your concise conclusion here]
+    ```
     """
     print("Prompt2: ", prompt)
     return prompt

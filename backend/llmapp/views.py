@@ -5,8 +5,10 @@ import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from .serializers import UploadedPDFSerializer
 from .models import UploadedPDF, PDFEmbedding, ChatSession, ChatMessage
 from .utils import (
     pdf_to_markdown_with_markitdown,
@@ -159,60 +161,56 @@ class ChatResponseAPIView(APIView):
         pdf = chat_session.pdf
 
         try:
-            # FAISS 인덱스 및 메타데이터 로드
             index_file = f"faiss_indices/{pdf.id}_index.bin"
             metadata_file = f"faiss_indices/{pdf.id}_metadata.json"
             index, metadata = load_faiss_index(index_file, metadata_file)
 
-            # 질문 임베딩 생성
             query_embedding = create_embedding(message).reshape(1, -1)
-            #print(f"Query embedding shape: {query_embedding.shape}, dtype: {query_embedding.dtype}")
-            #print(f"Index dimensions: {index.d}")
-            #print(f"FAISS index total vectors: {index.ntotal}")
-
             top_k = min(5, index.ntotal)
             distances, indices = index.search(query_embedding, top_k)
 
-            if not indices[0].size:
-                return Response({"error": "No relevant evidence found in the PDF."}, status=status.HTTP_404_NOT_FOUND)
-
-            # 근거추출
-            #evidence = [metadata[i] for i in indices[0]]
             evidence = []
             for idx in indices[0]:
-                if idx < len(metadata):
+                if 0 <= idx < len(metadata):
                     evidence.append(metadata[idx])
                 else:
                     print(f"Warning: Index {idx} out of bounds for metadata.")
+
             if not evidence:
-                evidence.append("No evidence found in this PDF file.")
+                evidence = [{"page_number": "N/A", "text": "No relevant evidence found in the PDF."}]
+                context = "No relevant evidence found in the PDF."
+            else:
+                context = "\n".join([f"Page {item['page_number']}: {item['text']}" for item in evidence])
 
-            print('='*50)
-            print("Evidence: ", evidence)
-            print('='*50)
-            context = "\n".join([f"Page {item['page_number']}: {item['text']}" for item in evidence])
+            print('=' * 50)
+            print("Evidence extracted:")
+            print(evidence)
+            print('=' * 50)
+
             prompt = build_prompt_for_pdf(context, message, evidence)
-            #print("체크포인트")
+            print("Generated Prompt:")
+            print(prompt)
 
-            response = create_openai_completion(prompt)
-            print("response:", response)
+            response_text = create_openai_completion(prompt)
+            print("API Response:")
+            print(response_text)
 
-            ChatMessage.objects.create(
-                session=chat_session,
-                sender="user",
-                message=message
-            )
-            
-            ChatMessage.objects.create(
-                session=chat_session,
-                sender="system",
-                message=response
-            )
+            try:
+                ChatMessage.objects.create(session=chat_session, sender="user", message=message)
+                ChatMessage.objects.create(session=chat_session, sender="system", message=response_text)
+                chat_session.history.append({"sender": "user", "message": message})
+                chat_session.history.append({"sender": "system", "message": response_text})
+                chat_session.save()
+            except Exception as e:
+                print(f"Error updating chat history: {e}")
+
             return Response({
-                "response": response,
+                "response": response_text,
                 "evidence": evidence
             }, status=status.HTTP_200_OK)
+
         except Exception as e:
+            print(f"Error in ChatResponseAPIView: {e}")
             return Response({"error": f"Failed to process chat: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -230,3 +228,26 @@ class StartChatAPIView(APIView):
 
         chat_session = ChatSession.objects.create(user=request.user, pdf=pdf)
         return Response({"chat_session_id": chat_session.id}, status=status.HTTP_200_OK)
+    
+class ChatHistoryAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pdf_id, *args, **kwargs):
+        chat_sessions = ChatSession.objects.filter(user=request.user, pdf_id=pdf_id)
+        chat_history = []
+        for session in chat_sessions:
+            messages = session.messages.values("sender", "message", "created_at")
+            chat_history.append({
+                "session_id": session.id,
+                "started_at": session.started_at,
+                "messages": list(messages)
+            })
+        return Response(chat_history, status=200)
+    
+
+class UploadedPDFListAPIView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UploadedPDFSerializer
+
+    def get_queryset(self):
+        return UploadedPDF.objects.filter(user=self.request.user).order_by('-uploaded_at')
