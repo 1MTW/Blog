@@ -2,3 +2,5 @@
 media/*
 faiss_indices
 __pycache__
+backend/llmapp/migrations/__pycache__/*
+backend/core/__pycache__/*

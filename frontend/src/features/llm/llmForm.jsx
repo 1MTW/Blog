@@ -4,6 +4,9 @@ import React, { useState, useEffect } from "react";
 import apiClient from "@/utils/axios";
 import styles from "./LLMForm.module.css";
 import ChatUI from "@/features/llm/chatUI";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 function LLMForm() {
   const [isPdfUploaded, setIsPdfUploaded] = useState(false);
@@ -173,7 +176,14 @@ function LLMForm() {
                 <ul>
                   {session.messages.map((msg, idx) => (
                     <li key={idx}>
-                      <strong>{msg.sender}:</strong> {msg.message}
+                      <strong>{msg.sender}:</strong> 
+                      <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeRaw]}
+                      
+                      >
+                          {msg.message}
+                      </ReactMarkdown>
                     </li>
                   ))}
                 </ul>

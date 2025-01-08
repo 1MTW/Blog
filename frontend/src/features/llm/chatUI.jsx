@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import apiClient from "@/utils/axios";
 import styles from "./ChatUI.module.css";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw"; 
 
 function ChatUI({ sessionId }) {
   const [messages, setMessages] = useState([]);
@@ -48,7 +50,11 @@ function ChatUI({ sessionId }) {
             <span className={styles.messageUser}>
               {msg.sender === "user" ? "You" : "System"}
             </span>
-            <ReactMarkdown className={styles.messageText}>
+            <ReactMarkdown 
+                remarkPlugins={remarkGfm} 
+                rehypePlugins={[rehypeRaw]} 
+                className={styles.messageText}
+            >
               {msg.message}
             </ReactMarkdown>
           </div>

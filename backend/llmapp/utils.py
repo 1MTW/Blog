@@ -153,8 +153,8 @@ def create_openai_completion(prompt, model="deepseek-chat"):
             json={
                 "model": model,
                 "messages": [{"role": "system", "content": prompt}],
-                "max_tokens": 500,
-                "temperature": 0.7
+                "max_tokens": 1500,
+                "temperature": 1.0
             }
         )
         #print("DeepSeek API 호출 완료")
@@ -195,30 +195,48 @@ def build_prompt_for_pdf(context, question, evidence_list):
     ### Evidence extracted from the PDF
     {evidence_section}
 
-    ### Instructions
-    1. Answer the question based only on the information provided in the PDF document.
-    2. Format your answer using **Markdown**, including:
-       - **Headings** for sections (e.g., `### 답변`, `### 근거`, `### 결론`).
-       - **Bold text** for emphasis.
-       - **Bullet points** or numbered lists for clear organization.
-       - **Code blocks** or inline code where applicable.
-       - **Links** if referencing online resources (if any URLs are provided in the context).
-    3. Clearly cite the evidence used for your answer, including the page number and relevant text.
-    4. If the question cannot be answered with the provided information, state: "`PDF 문서에서는 해당 정보가 제공되지 않습니다.`"
+    ### Instructions (Enhanced HTML Formatting)
+    1. **Answer the question based exclusively on the information provided in the PDF document.**
+    2. Use **HTML** to format your answer with an elegant and clear structure, adhering to the following:
+       - **Headings** (`<h1>`, `<h2>`, `<h3>`) for major sections:
+         - `<h1>` for the main title (e.g., 답변, 근거, 결론).
+         - `<h2>` for subsections or subtopics if needed.
+       - **Bold text** (`<strong>`) for emphasis.
+       - **Bullet points** (`<ul>`) or numbered lists (`<ol>`) for clarity and organization.
+       - **Code blocks** (`<pre>` and `<code>`) or inline code (`<code>`) for referencing technical details.
+       - **Table elements** (`<table>`, `<tr>`, `<th>`, `<td>`) for structured data when applicable.
+       - **Links** (`<a href="URL">`) to online resources, if URLs are mentioned in the PDF content.
+    3. **Cite evidence clearly** for each point, including:
+       - The **page number** and relevant text.
+       - Highlight specific keywords from the evidence using **bold** or **italic** formatting.
+    4. If the question cannot be answered based on the PDF content, clearly state:
+       <p><strong>PDF 문서에서는 해당 정보가 제공되지 않습니다.</strong></p>
     5. Write the entire answer in **Korean**.
 
-    ### Response Format (Use Markdown)
-    ```markdown
-    ### 답변
-    [Your detailed answer here]
+    ### Response Format (Use HTML Format)
+    <h1>답변</h1>
+    <p>
+        PDF 문서에서는 질문에 대한 정보가 제공되지 않습니다.
+    </p>
+    
+    <h1>근거</h1>
+    <ul>
+        <li>
+            <strong>Page:</strong> [Page number]<br>
+            <strong>Text:</strong> "[Relevant text here]"
+        </li>
+        <li>
+            <strong>Page:</strong> [Page number]<br>
+            <strong>Text:</strong> "[Relevant text here]"
+        </li>
+    </ul>
+    
+    <h1>결론</h1>
+    <p>
+        PDF 문서에서 질문에 대한 정보는 찾을 수 없었습니다. 
+        <strong>따라서, 제공된 자료로는 답변을 구성할 수 없습니다.</strong>
+    </p>
 
-    ### 근거
-    - **Page:** [Page number]  \n  **Text:** "[Relevant text here]"
-    - **Page:** [Page number]  \n  **Text:** "[Relevant text here]"
-
-    ### 결론
-    [Your concise conclusion here]
-    ```
     """
     print("Prompt2: ", prompt)
     return prompt

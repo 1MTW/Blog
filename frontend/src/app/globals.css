@@ -28,6 +28,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+h1 {
+  font-size: 2rem;
+}
 * {
   box-sizing: border-box;
   padding: 0;

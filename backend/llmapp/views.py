@@ -205,7 +205,7 @@ class ChatResponseAPIView(APIView):
                 print(f"Error updating chat history: {e}")
 
             return Response({
-                "response": response_text,
+                "response": f"{response_text}",
                 "evidence": evidence
             }, status=status.HTTP_200_OK)
 
@@ -237,10 +237,18 @@ class ChatHistoryAPIView(APIView):
         chat_history = []
         for session in chat_sessions:
             messages = session.messages.values("sender", "message", "created_at")
+            formatted_messages = [
+            {
+                "sender": message["sender"],
+                "message": f"`{message['message']}`",  # message 값을 양옆으로 ` 감싸기
+                "created_at": message["created_at"],
+            }
+            for message in messages
+        ]
             chat_history.append({
                 "session_id": session.id,
                 "started_at": session.started_at,
-                "messages": list(messages)
+                "messages": formatted_messages
             })
         return Response(chat_history, status=200)
     
