@@ -24,7 +24,7 @@ function LoginButton() {
       >
         <Image
           className={styles.logo}
-          src="/vercel.svg"
+          src={process.env.NODE_ENV === 'development' ? 'vercel.svg' : 'https://d3h0ehcnk39jwg.cloudfront.net/vercel.svg'}
           alt="Vercel logomark"
           width={20}
           height={20}
