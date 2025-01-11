@@ -90,8 +90,7 @@ class CreatePostAPIView(APIView):
 
 class CreateCategoryAPIView(APIView):
     def post(self, request, *args, **kwargs):
-        user = request.data.get("user")
-        category_name = request.data.get("category")  # JSON body에서 카테고리 이름 가져오기
+        category_name = request.data.get("category_name")  # JSON body에서 카테고리 이름 가져오기
         if not category_name:
             return Response({"error": "Category name is required"}, status=400)
 
@@ -104,6 +103,13 @@ class CreateCategoryAPIView(APIView):
             return Response(result.data, status=201)
         except Exception as e:
             return Response({"error": str(e)}, status=400)
+
+class FetchCategoryAPIView(APIView):
+    def get(self,request,*args,**kwargs):
+        user = request.user
+        categories = Categories.objects.filter(user=request.user)
+        result = CategorySerializer(categories, many=True)  # many=True 추가
+        return Response(result.data)
 
 
         

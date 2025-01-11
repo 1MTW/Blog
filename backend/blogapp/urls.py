@@ -5,6 +5,7 @@ from .views import (
     PostSearchCategoryAPIView,
     CreatePostAPIView,
     CreateCategoryAPIView,
+    FetchCategoryAPIView,
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path("search/category/<str:category>/",PostSearchCategoryAPIView.as_view(),name="post_by_category"),
     path("post/",CreatePostAPIView.as_view(),name="post"),
     path("category/create/", CreateCategoryAPIView.as_view(), name="create-category"),
+    path("category/",FetchCategoryAPIView.as_view(),name="FetchCategory"),
 ]
