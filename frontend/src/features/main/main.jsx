@@ -65,11 +65,16 @@ function Main() {
   };
 
   const handleCategoryClick = (category) => {
-    setSelectedCategory(category);
-    if (category) {
-      setFilteredPosts(posts.filter((post) => post.category_name === category));
-    } else {
-      setFilteredPosts(posts);
+    if(selectedCategory!==category){
+      setSelectedCategory(category);
+      if (category) {
+        setFilteredPosts(posts.filter((post) => post.category_name === category));
+      } 
+    }
+    else {
+      setSelectedCategory(null);
+      setFilteredPosts([]);
+      fetchHistory();
     }
   };
 

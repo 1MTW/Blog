@@ -25,9 +25,6 @@ function Writing({ post, onSuccess, onCancel}) {
     try {
       if (post) {
         // 수정 모드
-        alert(1)
-        console.log(typeof(post.id))
-        alert(2)
         await apiClient.put(`/api/blog/search/${post.id}/`, {
           title,
           content,
