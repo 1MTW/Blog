@@ -16,18 +16,18 @@ function Main() {
   useEffect(() => {
     fetchHistory();
   }, []);
-
   const fetchHistory = async () => {
     try {
-      const response = await apiClient.get("/api/blog/history/");
-      
-      // 고유한 category_name 목록 추출
-      const categories = [...new Set(response.data.map((item) => item.category_name))];
-      const posts = response.data;
-  
-      setCategories(categories); // 고유한 카테고리 이름 목록 저장
-      setPosts(posts);           // 전체 포스트 저장
-      setFilteredPosts(posts);   // 초기 필터링된 포스트 설정
+      // 두 API를 병렬로 호출
+      const [postsResponse, categoriesResponse] = await Promise.all([
+        apiClient.get("/api/blog/history/"),
+        apiClient.get("/api/blog/category"),
+      ]);
+
+      // 데이터 설정
+      setCategories(categoriesResponse.data); // 카테고리 데이터 설정
+      setPosts(postsResponse.data);          // 포스트 데이터 설정
+      setFilteredPosts(postsResponse.data);  // 초기 필터링된 포스트 설정
     } catch (error) {
       console.error("블로그 히스토리 불러오기 실패:", error);
     }
@@ -42,19 +42,19 @@ function Main() {
       return;
     }
 
-    if (categories.includes(newCategory)) {
-      alert("이미 존재하는 카테고리입니다.");
-      return;
+    if (categories.some((category) => category.category_name === newCategory)) {
+      alert("중복된 카테고리 이름이 있습니다.");
+      return
     }
 
     try {
       const response = await apiClient.post("/api/blog/category/create/", {
-        category: newCategory,
+        category_name: newCategory,
       });
-
       if (response.status === 201) {
         setCategories([...categories, newCategory]); // 새 카테고리 추가
         e.target.reset(); // 입력 필드 초기화
+        fetchHistory();
       } else {
         alert("카테고리 추가 중 문제가 발생했습니다.");
       }
@@ -96,13 +96,15 @@ function Main() {
         {categories && categories.length > 0 ? (
           <ul className="category-list">
             {categories.map((category) => (
+              category.id ? (
               <li
-                key={category}
-                onClick={() => handleCategoryClick(category)}
+                key={category.id}
+                onClick={() => handleCategoryClick(category.category_name)}
                 className="category-item"
               >
-                {category}
+                {category.category_name}
               </li>
+              ) : null
             ))}
           </ul>
         ) : (
@@ -124,7 +126,7 @@ function Main() {
           post={selectedPost}
           onSuccess={() => {
             setIsWriting(false);
-            fetchHistory(); // 목록 갱신
+            fetchHistory();
           }}
           onCancel={() => setIsWriting(false)}
         />

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import apiClient from "@/utils/axios";
 import "./writing.css";
 
-function Writing({ post }) {
+function Writing({ post, onSuccess, onCancel}) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category_name, setCategoryName] = useState("");
@@ -46,6 +46,9 @@ function Writing({ post }) {
       setTitle("");
       setContent("");
       setCategoryName("");
+      if (onSuccess){
+        onSuccess();
+      }
     } catch (error) {
       console.error("포스팅 처리 실패:", error);
       alert("작업 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -83,6 +86,7 @@ function Writing({ post }) {
       <button onClick={sendPost} className="send-button">
         보내기
       </button>
+      <button onClick={onCancel}>취소</button>
     </div>
   );
 }
