@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UploadedPDF, PDFEmbedding, ChatSession, ChatMessage
+from .models import UploadedPDF, PDFEmbedding, ChatSession, ChatMessage 
 
 admin.site.register(UploadedPDF)
 admin.site.register(PDFEmbedding)

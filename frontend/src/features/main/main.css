@@ -1,0 +1,90 @@
+/* main.css */
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #1a1a1a;
+  color: #f5f5f5;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2 {
+  color: #ffffff;
+}
+
+h3 {
+  color: #cfcfcf;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+ul li {
+  padding: 10px 15px;
+  margin: 5px 0;
+  background-color: #333333;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #ffffff;
+}
+
+ul li:hover {
+  background-color: #555555;
+}
+
+input[type="text"] {
+  width: 80%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #555555;
+  border-radius: 5px;
+  background-color: #262626;
+  color: #f5f5f5;
+}
+
+button {
+  padding: 10px 15px;
+  margin: 10px 0;
+  background-color: #4caf50;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+.category-container {
+  margin: 20px;
+  padding: 10px;
+  background-color: #2a2a2a;
+  border-radius: 10px;
+}
+
+.post-container {
+  margin: 20px;
+  padding: 15px;
+  background-color: #2a2a2a;
+  border-radius: 10px;
+}
+
+.post-preview {
+  padding: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #444444;
+}
+
+.post-preview h3 {
+  margin: 0;
+  font-size: 1.2em;
+  color: #ffffff;
+}
+
+.post-preview p {
+  margin: 5px 0 0 0;
+  font-size: 0.9em;
+  color: #aaaaaa;
+}
