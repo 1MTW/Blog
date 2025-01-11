@@ -69,7 +69,7 @@ class CreatePostAPIView(APIView):
         user = request.user
         content = request.data.get("content")
         title = request.data.get("title")
-        category_name = request.data.get("category")  # 카테고리 이름
+        category_name = request.data.get("category_name")  # 카테고리 이름
 
         if not all([title, content, category_name]):
             return Response({"error": "All fields (title, content, category) are required"}, status=400)
